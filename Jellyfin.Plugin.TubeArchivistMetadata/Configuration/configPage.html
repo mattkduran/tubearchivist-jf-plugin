@@ -45,8 +45,8 @@
                         <h2>Playback synchronization</h2>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label" for="JFTASync">
-                            <input id="JFTASync" name="JFTASync" type="checkbox" is="emby-checkbox" />
+                        <label class="emby-checkbox-label" for="JFTAProgressSync">
+                            <input id="JFTAProgressSync" name="JFTAProgressSync" type="checkbox" is="emby-checkbox" />
                             <span>Synchronize Jellyfin playback progress to TubeArchivist</span>
                         </label>
                     </div>
@@ -100,7 +100,7 @@
                         document.querySelector('#TubeArchivistUrl').value = config.TubeArchivistUrl;
                         document.querySelector('#TubeArchivistApiKey').value = config.TubeArchivistApiKey;
                         document.querySelector('#MaxDescriptionLength').value = config.MaxDescriptionLength;
-                        document.querySelector('#JFTASync').checked = config.JFTASync;
+                        document.querySelector('#JFTAProgressSync').checked = config.JFTAProgressSync;
                         document.querySelector('#JFUsernamesTo').value = config.JFUsernamesTo;
                         document.querySelector('#TAJFSync').checked = config.TAJFSync;
                         document.querySelector('#JFUsernameFrom').value = config.JFUsernameFrom;
@@ -117,7 +117,7 @@
                         config.TubeArchivistUrl = document.querySelector('#TubeArchivistUrl').value;
                         config.TubeArchivistApiKey = document.querySelector('#TubeArchivistApiKey').value;
                         config.MaxDescriptionLength = document.querySelector('#MaxDescriptionLength').value;
-                        config.JFTASync = document.querySelector('#JFTASync').checked;
+                        config.JFTAProgressSync = document.querySelector('#JFTAProgressSync').checked;
                         config.JFUsernamesTo = document.querySelector('#JFUsernamesTo').value;
                         config.TAJFSync = document.querySelector('#TAJFSync').checked;
                         config.JFUsernameFrom = document.querySelector('#JFUsernameFrom').value;

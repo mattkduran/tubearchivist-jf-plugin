@@ -82,7 +82,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
             }
 
             var isJFTATaskPresent = taskManager.ScheduledTasks.Any(t => t.Name.Equals(jfToTubearchivistProgressSyncTask.Name, StringComparison.Ordinal));
-            if (Instance!.Configuration.JFTASync && !isJFTATaskPresent)
+            if (Instance!.Configuration.JFTAProgressSync && !isJFTATaskPresent)
             {
                 logger.LogInformation("Queueing task {TaskName}.", jfToTubearchivistProgressSyncTask.Name);
                 taskManager.AddTasks([jfToTubearchivistProgressSyncTask]);
@@ -315,7 +315,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         {
             // Early exit checks - ordered from cheapest to most expensive
             // 1. Configuration check (memory access)
-            if (!Instance!.Configuration.JFTASync)
+            if (!Instance!.Configuration.JFTAProgressSync)
             {
                 return;
             }
@@ -327,7 +327,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
             }
 
             // 3. Playback position check (null check)
-            if (eventArgs.PlaybackPositionTicks == null)
+            if (!eventArgs.PlaybackPositionTicks.HasValue)
             {
                 return;
             }
@@ -342,7 +342,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
             // At this point, we know it's a valid TubeArchivist Episode - safe to proceed
             try
             {
-                long progress = (long)eventArgs.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
+                long progress = (long)eventArgs.PlaybackPositionTicks.Value / TimeSpan.TicksPerSecond;
                 var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
                 var statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress).ConfigureAwait(true);
 
@@ -360,12 +360,19 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         private async void OnWatchedStatusChange(object? sender, UserDataSaveEventArgs eventArgs)
         {
             // Early exit checks
+            if (eventArgs == null || eventArgs.Item.Id == Guid.Empty)
+            {
+                Logger.LogDebug("Skipping watched status synchronization: WatchedStatusChange event triggered with null or empty Guid.");
+                return;
+            }
+
             var user = _userManager.GetUserById(eventArgs.UserId);
-            if (!Configuration.JFTASync || user == null || !Configuration.GetJFUsernamesToArray().Contains(user.Username))
+            if (!Configuration.JFTAProgressSync || user == null || !Configuration.GetJFUsernamesToArray().Contains(user.Username))
             {
                 return;
             }
 
+            var userItemData = _userDataManager.GetUserData(user, eventArgs.Item);
             var isPlayed = eventArgs.Item.IsPlayed(user);
             Logger.LogDebug("User {UserId} changed watched status to {Status} for the item {ItemName}", eventArgs.UserId, isPlayed, eventArgs.Item.Name);
 
@@ -375,8 +382,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                 // Handle Series (YouTube Channels)
                 if (eventArgs.Item is Series)
                 {
-                    // For Series, we still need to validate collection membership
-                    // but can use the efficient cached ID method
                     if (_tubeArchivistCollectionId != null && eventArgs.Item.Id != _tubeArchivistCollectionId)
                     {
                         // Check if this Series is a child of the TubeArchivist collection
@@ -396,7 +401,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                 // Handle Episodes (YouTube Videos) - with collection validation
                 else if (eventArgs.Item is Episode)
                 {
-                    // Validate this Episode belongs to TubeArchivist collection
                     if (!IsItemInTubeArchivistCollection(eventArgs.Item))
                     {
                         return;
@@ -427,12 +431,15 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                 // Sync progress for Episodes only
                 if (eventArgs.Item is Episode)
                 {
-                    var progress = _userDataManager.GetUserData(user, eventArgs.Item).PlaybackPositionTicks / TimeSpan.TicksPerSecond;
-                    var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
-                    statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress).ConfigureAwait(true);
-                    if (statusCode != System.Net.HttpStatusCode.OK)
+                    var progress = userItemData?.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
+                    if (progress != null)
                     {
-                        Logger.LogCritical("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
+                        var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
+                        statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress.Value).ConfigureAwait(true);
+                        if (statusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            Logger.LogCritical("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
+                        }
                     }
                 }
             }

@@ -37,7 +37,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Configuration
             _tubeArchivistUrl = string.Empty;
             _tubeArchivistApiKey = string.Empty;
             MaxDescriptionLength = 500;
-            JFTASync = false;
+            JFTAProgressSync = false;
             JFUsernameFrom = string.Empty;
             TAJFSync = false;
             _jfUsernamesTo = new HashSet<string>();
@@ -125,7 +125,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Configuration
         /// <summary>
         /// Gets or sets a value indicating whether to enable JF->TA playback progress synchronization.
         /// </summary>
-        public bool JFTASync { get; set; }
+        public bool JFTAProgressSync { get; set; }
 
         /// <summary>
         /// Gets or sets the playback progress owner Jellyfin username to synchronize data to TubeArchivist.
